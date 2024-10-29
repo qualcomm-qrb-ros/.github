@@ -1,0 +1,19 @@
+Mail Title:
+[QRB-ROS][PR Review] "[PR Title]" to repository "[Repository Name]"
+
+Mail Content:
+Hi QRB ROS Maintainers:
+I have submitted a pull request titled "[PR Title]"
+PR Type: [Bug Fix / New Feature / Improvement / Documentation / Other]
+Issue Resolved / Feature Added:
+Issue Number (if applicable): #[Issue Number]
+Description: [Briefly describe the issue being resolved or the feature being added.]
+Version Update Suggestion: [Yes / No]
+Suggested New Version: [e.g., v1.2.3]
+Solution Approach:
+[Provide a brief description of the approach taken to resolve the issue or implement the feature.]
+Clang Format Verification:
+[Confirm that the code passes local clang-format checks and adheres to the project's coding standards.]
+[Developer's Name]
+[GitHub Username]
+[Contact Email]

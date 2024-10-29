@@ -8,6 +8,7 @@ PR Type: [Bug Fix / New Feature / Improvement / Documentation / Other]
 Issue Resolved / Feature Added:
 Issue Number (if applicable): #[Issue Number]
 Description: [Briefly describe the issue being resolved or the feature being added.]
+Document update commit: [If need update version, so need update Document Package, need commit id in Internal GitHub]
 Version Update Suggestion: [Yes / No]
 Suggested New Version: [e.g., v1.2.3]
 Solution Approach:

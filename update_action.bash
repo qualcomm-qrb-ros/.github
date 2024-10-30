@@ -1,15 +1,15 @@
 #!/bin/bash
 
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 [action: create-branch/push-yml] [branch-name/config-file-path]"
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 [action: create-branch/push-yml] [branch-name/config-file-path] [action_yml_name]"
     exit 1
 fi
 
-org_name="quic-qrb-ros"
-action_yml_name="quic-organization-repolinter.yml"
-
 action=$1
 param=$2
+action_yml_name=$3
+
+org_name="quic-qrb-ros"
 
 excluded_repos=(
 "quic-qrb-ros.github.io"
@@ -58,7 +58,7 @@ push_yml_file() {
             echo "Skipping excluded repo: $repo"
             continue
         fi
-        file_response=$(gh api /repos/$org_name/$repo/contents/.github/workflows/quic-organization-repolinter.yml)
+        file_response=$(gh api /repos/$org_name/$repo/contents/.github/workflows/$action_yml_name)
         file_exists=$(echo $file_response | jq -r '.message' | grep -i 'not found')
         if [ -n "$file_exists" ]; then
             echo "Creating for $repo"
@@ -76,7 +76,7 @@ push_yml_file() {
 if [ "$action" == "create-branch" ]; then
     create_branches $param
 elif [ "$action" == "push-yml" ]; then
-    push_yml_file $param
+    push_yml_file $param $action_yml_name
 else
     echo "Invalid action. Use 'create-branch' or 'push-yml'."
     exit 1

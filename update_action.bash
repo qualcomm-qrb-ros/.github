@@ -18,6 +18,7 @@ excluded_repos=(
 "ros2_tracing"
 "meta-ros"
 ".github"
+"ros2benchmark"
 )
 
 repos=$(gh api /orgs/$org_name/repos | jq '.[].name')

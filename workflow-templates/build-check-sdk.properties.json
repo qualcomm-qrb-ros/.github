@@ -1,0 +1,4 @@
+{
+    "name": "Build check",
+    "description": "Build project source code in SDK environment."
+}

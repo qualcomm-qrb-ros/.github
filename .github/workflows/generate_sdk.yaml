@@ -78,7 +78,7 @@ jobs:
             ls ${PERSIST_DIR}/ -al
           else
             echo "DEPLOY_SDK=false" >> $GITHUB_ENV
-            echo ""persist_dir" is not available. Set DEPLOY_SDK=false."
+            echo "${PERSIST_DIR} is not available. Set DEPLOY_SDK=false."
           fi
 
       - name: Sync source tree
@@ -121,19 +121,15 @@ jobs:
             mkdir -p ${SDK_DIR}/.backup
           fi
 
-          for file in ${SDK_DIR}/*;do
+          for file in "${SDK_DIR}"/*;do
             if [ -f "$file" ]; then
               mv ${file} ${SDK_DIR}/.backup/
             fi
           done
 
-          for file in ${{ github.workspace }}/build-$DISTRO/tmp-glibc/deploy/sdk/*.sh
+          for file in "${{ github.workspace }}/build-$DISTRO/tmp-glibc/deploy/sdk/"*.sh
           do
-            cp ${file} ${SDK_DIR}
+            cp ${file} ${SDK_DIR} || mv ${SDK_DIR}/.backup/* ${SDK_DIR}
           done
 
-          if [ $? == 0 ];then
-            rm ${SDK_DIR}/.backup/* -fr
-          else
-            mv ${SDK_DIR}/.backup/* ${SDK_DIR}
-          fi
+          rm ${SDK_DIR}/.backup/* -fr

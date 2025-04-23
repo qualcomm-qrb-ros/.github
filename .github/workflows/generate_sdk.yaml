@@ -37,8 +37,8 @@ on:
         default: true
 
 env:
-  PERSIST_DIR: /srv/gh-runners/quic-qrb-ros
-  DL_DIR: /srv/gh-runners/quic-qrb-ros/downloads
+  PERSIST_DIR: /srv/gh-runners/qualcomm-qrb-ros
+  DL_DIR: /srv/gh-runners/qualcomm-qrb-ros/downloads
 
   DEPLOY_SDK: ${{ github.event.inputs.deploy_sdk || 'true' }}
   QCOM_SELECTED_BSP: ${{inputs.build_override || 'custom'}}

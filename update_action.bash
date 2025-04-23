@@ -9,10 +9,10 @@ action=$1
 param=$2
 action_yml_name=$3
 
-org_name="quic-qrb-ros"
+org_name="qualcomm-qrb-ros"
 
 excluded_repos=(
-"quic-qrb-ros.github.io"
+"qualcomm-qrb-ros.github.io"
 "rviz"
 "ros2cli"
 "ros2_tracing"

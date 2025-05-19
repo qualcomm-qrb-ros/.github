@@ -29,7 +29,7 @@ jobs:
 
       - name: Set configuration file
         run: |
-          echo "export default {extends: ['@commitlint/config-conventional']};" > commitlint.config.js
+          wget https://raw.githubusercontent.com/qualcomm-qrb-ros/.github/commitlint/commitlint.config.js
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'

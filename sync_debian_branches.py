@@ -18,7 +18,7 @@ def find_ros_packages(path = "."):
             name = tree.findtext("name")
             packages["."] = name
         except ET.ParseError:
-            print(f"Warning: {root}/package.xml parse failed!")
+            print(f"Warning: {path}/package.xml parse failed!")
     else:   # Multiple packages
         for root, dirs, files in os.walk(path):
             if "package.xml" in files:
@@ -52,10 +52,10 @@ def create_pull_request(target_branch, source_branch, commit, pr_num=None):
         print(f"✅ PR created successfully: {result.stdout.strip()}")
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        print(f"❌ PR created failed: {e.stderr}")
+        print(f"❌ PR creation failed: {e.stderr}")
         return None
 
-def sync_commit_to_branch(repo, base_branch, target_branch, commit, files, mode = "pr"):
+def sync_commit_to_branch(repo, base_branch, target_branch, commit, files, packages, mode = "pr"):
     worktree_dir = f"worktree_{target_branch.replace('/', '_')}"
     worktree_path = Path(worktree_dir)
     pr_num = None
@@ -66,10 +66,20 @@ def sync_commit_to_branch(repo, base_branch, target_branch, commit, files, mode 
         
         for file in files:
             src_path = Path(file)
-            dst_path = worktree_path / file
-            
+
+            # Remove path prefix
+            for pkg_path in packages:
+                if file.startswith(pkg_path + "/") or file == pkg_path:
+                    relative_path = file[len(pkg_path):].lstrip("/")
+                    dst_path = worktree_path / relative_path
+                    break
+            else:
+                relative_path = file
+                dst_path = worktree_path / relative_path
+
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
+            print(f"📁 Copy from main: {file} -> debian: {relative_path}")
             repo.git.checkout(commit.hexsha, "--", file)
             if src_path.exists():
                 with open(src_path, "rb") as f_src, open(dst_path, "wb") as f_dst:
@@ -128,7 +138,7 @@ def main():
 
     # 1. Get packages
     packages = find_ros_packages(args.path)
-    print(f"📦 Find {len(packages)} ROS pakages: {json.dumps(packages, indent=2)}")
+    print(f"📦 Found {len(packages)} ROS packages: {json.dumps(packages, indent=2)}")
 
     # 2. Get commits
     before_sha = os.getenv("GITHUB_EVENT_BEFORE")
@@ -136,7 +146,7 @@ def main():
     print(f"before_sha:{before_sha}, after_sha:{after_sha}")
 
     if not after_sha:
-        print(f"Cannot get enviroment variable: GITHUB_SHA!")
+        print(f"Cannot get environment variable: GITHUB_SHA!")
         exit()
 
     if not before_sha or before_sha == "0"*40:  # Initial commit
@@ -152,14 +162,14 @@ def main():
         try:
             # Get changed file list
             changed_files = [item.a_path for item in commit.diff(commit.parents[0])]
-            print(f"Chagned files: {changed_files}")
+            print(f"Changed files: {changed_files}")
             affected_branches = {}
             
             # 4. Match packages
             for file in changed_files:
                 for path, pkg_name in packages.items():
                     normalized_path = path[2:] if path.startswith("./") else path
-                    print(f"normalized_path:{normalized_path}, pkg_name:{pkg_name}, file:{file}")
+                    print(f"\tnormalized_path:{normalized_path}, pkg_name:{pkg_name}, file:{file}")
 
                     if normalized_path == ".":
                         if "/" not in file or file.startswith("./"):
@@ -172,7 +182,7 @@ def main():
             
             for branch, files in affected_branches.items():
                 print(f"🔄 Sync {branch}: {len(files)} files. \nFiles: {files}")
-                sync_commit_to_branch(repo, "main", branch, commit, files, mode = args.mode)
+                sync_commit_to_branch(repo, "main", branch, commit, files, packages, mode = args.mode)
         
         except IndexError:
             print(f"⚠️ Initial commit {commit.hexsha}. Skip file comparison")

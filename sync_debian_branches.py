@@ -1,191 +1,96 @@
 #!/usr/bin/env python3
-import os
-import argparse
-import json
-import subprocess
-import xml.etree.ElementTree as ET
-from git import Repo, GitCommandError
+import os, shutil, subprocess, argparse, xml.etree.ElementTree as ET
 from pathlib import Path
+from git import Repo, GitCommandError
+import sys
 
-def find_ros_packages(path = "."):
+def find_ros_packages(base_path):
     """Find ROS packages and return dict{path:name}"""
     packages = {}
-    os.chdir(path)
-    # Single package
-    if Path("package.xml").exists():
-        try:
-            tree = ET.parse("package.xml")
-            name = tree.findtext("name")
-            packages["."] = name
-        except ET.ParseError:
-            print(f"Warning: {path}/package.xml parse failed!")
-    else:   # Multiple packages
-        for root, dirs, files in os.walk(path):
-            if "package.xml" in files:
-                try:
-                    tree = ET.parse(Path(root) / "package.xml")
-                    name = tree.findtext("name")
-                    packages[root] = name
-                    dirs.clear()
-                except ET.ParseError:
-                    print(f"Warning: {root}/package.xml parse failed!")
+
+    for root, dirs, files in os.walk(base_path):
+        if "package.xml" in files:
+            try:
+                name = ET.parse(Path(root) / "package.xml").findtext("name")
+                packages[root] = name
+                dirs.clear()
+            except ET.ParseError:
+                print(f"⚠️ Failed to parse {root}/package.xml")
     return packages
 
-def create_pull_request(target_branch, source_branch, commit, pr_num=None):
-    title = f"Auto-sync: {commit.hexsha[:7]}"
-    body = f"Source commit: {commit.hexsha}\nMessage: {commit.message.strip()}"
-    if pr_num:
-        body += f"\nOriginal PR: #{pr_num}"
-    
+def clear_except(path, keep=[".git", "debian"]):
+    for item in Path(path).iterdir():
+        if item.name not in keep:
+            shutil.rmtree(item) if item.is_dir() else item.unlink()
+            print(f"Remove {item}")
+
+def copy_package(src, dst):
+    for root, _, files in os.walk(src):
+        for f in files:
+            s = Path(root) / f
+            d = Path(dst) / Path(root).relative_to(src) / f
+            d.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(s, d)
+            print(f"Copy {s} to {d}")
+
+def create_pr(base, head, msg):
     try:
-        result = subprocess.run(
-            ["gh", "pr", "create", 
-             "--base", target_branch,
-             "--head", source_branch,
-             "--title", title,
-             "--body", body,
-             "--fill"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        print(f"✅ PR created successfully: {result.stdout.strip()}")
-        return result.stdout.strip()
+        subprocess.run(["gh", "pr", "create", "--base", base, "--head", head,
+                        "--title", f"Sync {base}", "--body", msg],
+                       check=True, text=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ PR creation failed: {e.stderr}")
-        return None
 
-def sync_commit_to_branch(repo, base_branch, target_branch, commit, files, packages, mode = "pr"):
-    worktree_dir = f"worktree_{target_branch.replace('/', '_')}"
-    worktree_path = Path(worktree_dir)
-    pr_num = None
-
+def sync(repo, base_branch, pkg_path, pkg_name, mode):
+    target_branch = f"debian/jazzy/noble/{pkg_name}"
+    worktree = f"worktree_{pkg_name}"
     try:
-        repo.git.worktree("add", worktree_dir, target_branch)
-        worktree_repo = Repo(worktree_path)
-        
-        for file in files:
-            src_path = Path(file)
+        repo.git.worktree("add", worktree, target_branch)
+        if not (Path(worktree) / "debian").exists():
+            print(f"::warning file=sync_debian_branches.py,line=48,title=Missing debian directory::❗ 'debian' directory missing in branch {target_branch}.")
 
-            # Remove path prefix
-            for pkg_path in packages:
-                if file.startswith(pkg_path + "/") or file == pkg_path:
-                    relative_path = file[len(pkg_path):].lstrip("/")
-                    dst_path = worktree_path / relative_path
-                    break
-            else:
-                relative_path = file
-                dst_path = worktree_path / relative_path
+        print("::group::Start file operation.")
 
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
+        clear_except(worktree)
+        repo.git.checkout(base_branch)
+        copy_package(pkg_path, worktree)
 
-            print(f"📁 Copy from main: {file} -> debian: {relative_path}")
-            repo.git.checkout(commit.hexsha, "--", file)
-            if src_path.exists():
-                with open(src_path, "rb") as f_src, open(dst_path, "wb") as f_dst:
-                    f_dst.write(f_src.read())
-        
-        worktree_repo.git.add(A=True)
-        if worktree_repo.is_dirty():
+        print("::endgroup::")
 
-            original_msg = commit.message.strip()
-            commit_msg = f"{original_msg}\nSource: {commit.hexsha}"
-            
-            if "Merge pull request" in original_msg:
-                pr_num = original_msg.split("#")[1].split()[0]
-                commit_msg += f" | PR: #{pr_num}"
-            
-            worktree_repo.index.commit(commit_msg)
-
+        wrepo = Repo(worktree)
+        wrepo.git.add(A=True)
+        if wrepo.is_dirty():
+            commit_hash = repo.head.commit.hexsha
+            msg = f"sync from {base_branch}: for {pkg_name}\nSource commit: {commit_hash}"
+            wrepo.index.commit(msg)
             if mode == "direct":
-                worktree_repo.git.push("origin", target_branch)
-                print(f"✅ Push {commit.hexsha[:7]} to {target_branch}")
+                wrepo.git.push("origin", target_branch)
             else:
-                temp_branch = f"sync-{target_branch.replace('/', '-')}-{commit.hexsha[:7]}"
-                worktree_repo.git.checkout("-b", temp_branch)
-                worktree_repo.git.push("origin", temp_branch, force=True)
-                pr_url = create_pull_request(target_branch, temp_branch, commit, pr_num)
-                if pr_url:
-                    print(f"✅ PR created: {pr_url}")
+                temp = f"sync-{pkg_name}"
+                wrepo.git.checkout("-b", temp)
+                wrepo.git.push("origin", temp, force=True)
+                create_pr(target_branch, temp, msg)
+            print(f"🚩 {pkg_name} updated!")
         else:
-            print(f"⏭️ {target_branch} nothing to commit")
-    
+            print(f"⏭️ No changes for {pkg_name}")
     except GitCommandError as e:
         print(f"❌ Sync failed: {str(e)}")
     finally:
-        if worktree_path.exists():
-            repo.git.worktree("remove", worktree_dir, "--force")
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description="Sync source to debian branch.")
-    parser.add_argument("--mode", choices=["pr", "direct"], default="pr",
-                        help="Sync mode, pr=Create a pull request(default), direct=Push to debian branch.")
-    parser.add_argument("--path", type=str, default=".",
-                        help="Path of workspace, default: current directory.")
-    return parser.parse_args()
+        repo.git.worktree("remove", worktree, "--force")
 
 def main():
-    args = parse_arguments()
-    # Init repo
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["pr", "direct"], default="pr")
+    parser.add_argument("--path", default=".")
+    args = parser.parse_args()
+
     repo = Repo(args.path)
-    print("GH_TOKEN is set:", "GH_TOKEN" in os.environ)
-
-    token = os.getenv("GITHUB_TOKEN")
-    if token:
-        origin_url = repo.remotes.origin.url
-        authed_url = origin_url.replace("https://", f"https://x-access-token:{token}@")
-        repo.remotes.origin.set_url(authed_url)
-
-    # 1. Get packages
     packages = find_ros_packages(args.path)
-    print(f"📦 Found {len(packages)} ROS packages: {json.dumps(packages, indent=2)}")
+    print(f"📦 Found {len(packages)} packages: {packages}")
 
-    # 2. Get commits
-    before_sha = os.getenv("GITHUB_EVENT_BEFORE")
-    after_sha = os.getenv("GITHUB_SHA")
-    print(f"before_sha:{before_sha}, after_sha:{after_sha}")
-
-    if not after_sha:
-        print(f"Cannot get environment variable: GITHUB_SHA!")
-        exit()
-
-    if not before_sha or before_sha == "0"*40:  # Initial commit
-        commits = [repo.commit(after_sha)]
-    else:
-        commits = list(repo.iter_commits(f"{before_sha}..{after_sha}"))
-    
-    print(f"🔍 Handle {len(commits)} commits.")
-    print(f"🔍 Commits: {commits}")
-
-    # 3. Process
-    for commit in commits:
-        try:
-            # Get changed file list
-            changed_files = [item.a_path for item in commit.diff(commit.parents[0])]
-            print(f"Changed files: {changed_files}")
-            affected_branches = {}
-            
-            # 4. Match packages
-            for file in changed_files:
-                for path, pkg_name in packages.items():
-                    normalized_path = path[2:] if path.startswith("./") else path
-                    print(f"\tnormalized_path:{normalized_path}, pkg_name:{pkg_name}, file:{file}")
-
-                    if normalized_path == ".":
-                        if "/" not in file or file.startswith("./"):
-                            branch = f"debian/jazzy/noble/{pkg_name}"
-                            affected_branches.setdefault(branch, set()).add(file)
-                    else:
-                        if file.startswith(normalized_path + "/") or file == normalized_path:
-                            branch = f"debian/jazzy/noble/{pkg_name}"
-                            affected_branches.setdefault(branch, set()).add(file)
-            
-            for branch, files in affected_branches.items():
-                print(f"🔄 Sync {branch}: {len(files)} files. \nFiles: {files}")
-                sync_commit_to_branch(repo, "main", branch, commit, files, packages, mode = args.mode)
-        
-        except IndexError:
-            print(f"⚠️ Initial commit {commit.hexsha}. Skip file comparison")
+    for path, name in packages.items():
+        print(f"🔄 Syncing {name}")
+        sync(repo, "main", path, name, args.mode)
 
 if __name__ == "__main__":
     main()

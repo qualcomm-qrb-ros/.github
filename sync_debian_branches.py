@@ -12,20 +12,22 @@ def find_ros_packages(base_path):
         if "package.xml" in files:
             try:
                 name = ET.parse(Path(root) / "package.xml").findtext("name")
-                packages[root] = name
+                abs_root = os.path.abspath(root)
+                packages[abs_root] = name
                 dirs.clear()
             except ET.ParseError:
                 print(f"⚠️ Failed to parse {root}/package.xml")
     return packages
 
-def clear_except(path, keep=[".git", "debian"]):
+def clear_except(path, keep=[".git", "debian", ".github"]):
     for item in Path(path).iterdir():
         if item.name not in keep:
             shutil.rmtree(item) if item.is_dir() else item.unlink()
             print(f"Remove {item}")
 
 def copy_package(src, dst):
-    for root, _, files in os.walk(src):
+    for root, dirs, files in os.walk(src):
+        dirs[:] = [d for d in dirs if d not in ['.git', '.github']]
         for f in files:
             s = Path(root) / f
             d = Path(dst) / Path(root).relative_to(src) / f
@@ -43,7 +45,7 @@ def create_pr(base, head, msg):
 
 def sync(repo, base_branch, pkg_path, pkg_name, mode):
     target_branch = f"debian/jazzy/noble/{pkg_name}"
-    worktree = f"worktree_{pkg_name}"
+    worktree = f"{pkg_path}/../worktree_{pkg_name}"
     try:
         repo.git.worktree("add", worktree, target_branch)
         if not (Path(worktree) / "debian").exists():
@@ -61,7 +63,7 @@ def sync(repo, base_branch, pkg_path, pkg_name, mode):
         wrepo.git.add(A=True)
         if wrepo.is_dirty():
             commit_hash = repo.head.commit.hexsha
-            msg = f"sync from {base_branch}: for {pkg_name}\nSource commit: {commit_hash}"
+            msg = f"sync from {base_branch}: {commit_hash} for {pkg_name}"
             wrepo.index.commit(msg)
             if mode == "direct":
                 wrepo.git.push("origin", target_branch)
@@ -84,7 +86,8 @@ def main():
     parser.add_argument("--path", default=".")
     args = parser.parse_args()
 
-    repo = Repo(args.path)
+    abs_path = os.path.abspath(args.path)
+    repo = Repo(abs_path)
     packages = find_ros_packages(args.path)
     print(f"📦 Found {len(packages)} packages: {packages}")
 

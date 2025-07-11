@@ -37,8 +37,8 @@ on:
         default: true
 
 env:
-  PERSIST_DIR: /srv/gh-runners/qualcomm-qrb-ros
-  DL_DIR: /srv/gh-runners/qualcomm-qrb-ros/downloads
+  PERSIST_DIR: /efs/gh-runners/qualcomm-qrb-ros
+  DL_DIR: /efs/gh-runners/qualcomm-qrb-ros/downloads
 
   DEPLOY_SDK: ${{ github.event.inputs.deploy_sdk || 'true' }}
   QCOM_SELECTED_BSP: ${{inputs.build_override || 'custom'}}
@@ -46,7 +46,7 @@ env:
 
 jobs:
   build-sdk:
-    runs-on: [self-hosted, x86]
+    runs-on: [self-hosted, qcom-u2404, amd64]
     timeout-minutes: 7200
     strategy:
       fail-fast: false

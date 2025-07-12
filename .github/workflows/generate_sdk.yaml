@@ -62,7 +62,8 @@ jobs:
 
     steps:
       - name: System Check
-          sleep 5m
+        run: |
+         sleep 5m
       - name: Check and create work directories
         continue-on-error: true
         run: |

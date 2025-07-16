@@ -11,7 +11,8 @@ on:
       distro:
         description: "The short name of the distribution."
         required: true
-        default: '["qcom-robotics-ros2-jazzy", "qcom-robotics-ros2-humble"]'
+        default: '["qcom-robotics-ros2-jazzy"]'
+        # default: '["qcom-robotics-ros2-jazzy", "qcom-robotics-ros2-humble"]'
       build_override:
         description: "QCOM build override"
         required: false

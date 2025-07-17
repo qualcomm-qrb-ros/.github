@@ -33,9 +33,12 @@ jobs:
       - name: Update and install extra packages
         run: |
           # Add QCOM PPA
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+
           sudo add-apt-repository ppa:ubuntu-qcom-iot/qcom-noble-ppa
           sudo add-apt-repository ppa:ubuntu-qcom-iot/qirp
-          
+
           sudo apt update -y && sudo apt upgrade -y
           sudo apt install -y ${{ inputs.apt-packages }}
       - name: Checkout source code

@@ -52,7 +52,7 @@ jobs:
           done
       - name: Check ROS dependency
         run: |
-          sudo rosdep update
+          rosdep update
           sudo rosdep install -y --rosdistro ${{ inputs.ros-distro }} --from-paths ${ROS_SRC} --ignore-src
       - name: Build ROS packages
         shell: bash

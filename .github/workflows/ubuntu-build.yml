@@ -52,7 +52,11 @@ jobs:
           done
       - name: Check ROS dependency
         run: |
-          rosdep update
+          wget https://raw.githubusercontent.com/qualcomm-qrb-ros/qrb_ros_distro/refs/heads/release-0.2.0/qrb-ros-dep/qcom-distribution.yaml -O ${ROS_WS}/qcom-distribution.yaml
+          if [ -f /etc/ros/rosdep/sources.list.d/20-default.list ];then
+            echo "yaml file://${ROS_WS}/qcom-distribution.yaml" | sudo tee -a /etc/ros/rosdep/sources.list.d/20-default.list
+          fi 
+          sudo rosdep update
           sudo rosdep install -y --rosdistro ${{ inputs.ros-distro }} --from-paths ${ROS_SRC} --ignore-src
       - name: Build ROS packages
         shell: bash

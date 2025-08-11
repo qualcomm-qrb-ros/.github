@@ -40,7 +40,7 @@ jobs:
           sudo add-apt-repository ppa:ubuntu-qcom-iot/qirp
 
           sudo apt update -y && sudo apt upgrade -y
-          sudo apt install -y ${{ inputs.apt-packages }}
+          sudo apt install -y ${{ inputs.apt-packages }} wget
       - name: Checkout source code
         uses: actions/checkout@v4
         with:

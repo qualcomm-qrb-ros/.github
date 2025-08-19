@@ -39,7 +39,7 @@ jobs:
         run: |
           # Find config.yaml in case there're multiple packages
           all_machines=()
-          config_files=$(find . -name "config.yaml")
+          config_files=$(find ./.github -name "config.yaml")
 
           if [ -z "$config_files" ];then
             # If no config file, all platforms are supported.

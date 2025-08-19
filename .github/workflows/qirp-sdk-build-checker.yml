@@ -73,6 +73,8 @@ jobs:
         run: |
           echo "MACHINE=${{ matrix.machine }}" >> $GITHUB_ENV
           echo "DISTRO=${{ matrix.distro }}" >> $GITHUB_ENV
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
 
       - name: Set up SDK
         run: |
@@ -140,7 +142,7 @@ jobs:
           echo "Ignore list:" "${ignore_list[@]}"
 
           cd ${WORKSPACE}
-          colcon build --packages-ignore "${ignore_list[@]}" --merge-install --cmake-args \
+          colcon build ${{ inputs.colcon_args }} --packages-ignore "${ignore_list[@]}" --merge-install --cmake-args \
             -DPython3_ROOT_DIR=${OECORE_TARGET_SYSROOT}/usr \
             -DPython3_NumPy_INCLUDE_DIR=${OECORE_TARGET_SYSROOT}/usr/lib/python3.12/site-packages/numpy/core/include \
             -DPYTHON_SOABI=cpython-312-aarch64-linux-gnu -DCMAKE_STAGING_PREFIX="$(pwd)/install" \

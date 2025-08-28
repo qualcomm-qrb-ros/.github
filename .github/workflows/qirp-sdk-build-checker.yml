@@ -11,6 +11,10 @@ on:
         description: 'Colcon build arguments, e.g. --cmake-args -DCMAKE_BUILD_TYPE=Release'
         type: string
         required: false
+      pre_build_commands:
+        description: 'Customized shell commands before "colcon build"'
+        type: string
+        required: false
 
 env:
   PERSIST_DIR: /efs/gh-runners/qualcomm-qrb-ros
@@ -142,6 +146,10 @@ jobs:
           echo "Ignore list:" "${ignore_list[@]}"
 
           cd ${WORKSPACE}
+
+          if [ -n "${{ inputs.pre_build_commands" }} ];then
+            eval ${{ inputs.pre_build_commands }}
+          fi
           colcon build ${{ inputs.colcon_args }} --packages-ignore "${ignore_list[@]}" --merge-install --cmake-args \
             -DPython3_ROOT_DIR=${OECORE_TARGET_SYSROOT}/usr \
             -DPython3_NumPy_INCLUDE_DIR=${OECORE_TARGET_SYSROOT}/usr/lib/python3.12/site-packages/numpy/core/include \

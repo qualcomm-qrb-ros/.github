@@ -147,7 +147,7 @@ jobs:
 
           cd ${WORKSPACE}
 
-          if [ -n "${{ inputs.pre_build_commands" }} ];then
+          if [ -n "${{ inputs.pre_build_commands }}" ];then
             eval ${{ inputs.pre_build_commands }}
           fi
           colcon build ${{ inputs.colcon_args }} --packages-ignore "${ignore_list[@]}" --merge-install --cmake-args \

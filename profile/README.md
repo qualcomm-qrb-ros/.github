@@ -8,7 +8,4 @@ Head over to Qualcomm Technologies, Inc. GitHub page to learn more about our oth
 
 Join our **Discord** community to directly engage with Qualcomm experts, connect with other developers working with Qualcomm technology, and stay updated on the latest developer-focused news and product demos: [discord.com/invite/QualcommDeveloperNetwork](https://discord.com/invite/qualcommdevelopernetwork)
 
-## Developer Resources
-* [QRB-ROS Documentation](https://qualcomm-qrb-ros.github.io/)
-
 *Qualcomm branded products are products of Qualcomm Technologies, Inc. and/or its subsidiaries.*
